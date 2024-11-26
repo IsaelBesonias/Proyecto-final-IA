@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clasificador Payless</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8">Clasificador Payless</h1>
+        
+        <!-- Formulario de carga -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Cargar Nueva Imagen</h2>
+            <form id="uploadForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Seleccionar Imagen</label>
+                    <input type="file" 
+                           id="imageInput" 
+                           accept="image/*" 
+                           class="mt-1 block w-full text-sm text-gray-500
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-md file:border-0
+                                  file:text-sm file:font-semibold
+                                  file:bg-blue-50 file:text-blue-700
+                                  hover:file:bg-blue-100">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tipo Esperado</label>
+                    <select id="tipoEsperado" 
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 
+                                   focus:outline-none focus:ring-blue-500 focus:border-blue-500 
+                                   rounded-md">
+                        <option value="">Seleccionar tipo...</option>
+                    </select>
+                </div>
+                
+                <button type="submit" 
+                        class="w-full bg-blue-600 text-white py-2 px-4 rounded-md 
+                               hover:bg-blue-700 focus:outline-none focus:ring-2 
+                               focus:ring-blue-500 focus:ring-offset-2">
+                    Clasificar Imagen
+                </button>
+            </form>
+        </div>
+
+        <!-- Resultado de la clasificación actual -->
+        <div id="resultadoActual" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4">Resultado de la Clasificación</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="font-medium">Tipo Esperado:</p>
+                    <p id="tipoEsperadoResultado" class="text-gray-600"></p>
+                </div>
+                <div>
+                    <p class="font-medium">Tipo Clasificado:</p>
+                    <p id="tipoClasificadoResultado" class="text-gray-600"></p>
+                </div>
+                <div>
+                    <p class="font-medium">Coincidencia:</p>
+                    <p id="coincidenciaResultado" class="text-gray-600"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial de clasificaciones -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Historial de Clasificaciones</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Archivo
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tipo Esperado
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tipo Clasificado
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Coincidencia
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="historialBody" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let tiposDisponibles = {};
+
+        // Cargar tipos disponibles al iniciar
+        async function cargarTipos() {
+            try {
+                const response = await fetch(`${API_URL}/api/tipos`);
+                tiposDisponibles = await response.json();
+                const select = document.getElementById('tipoEsperado');
+                
+                Object.entries(tiposDisponibles).forEach(([valor, nombre]) => {
+                    const option = document.createElement('option');
+                    option.value = nombre;
+                    option.textContent = nombre;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error al cargar tipos:', error);
+            }
+        }
+
+        // Cargar historial de clasificaciones
+        async function cargarHistorial() {
+            try {
+                const response = await fetch(`${API_URL}/api/resultados`);
+                const resultados = await response.json();
+                const tbody = document.getElementById('historialBody');
+                tbody.innerHTML = '';
+
+                resultados.forEach(resultado => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${resultado.archivo}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${resultado.tipo_esperado}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${resultado.tipo_clasificado}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                       ${resultado.coincidencia ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${resultado.coincidencia ? 'Sí' : 'No'}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error al cargar historial:', error);
+            }
+        }
+
+        // Manejar el envío del formulario
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const imageFile = document.getElementById('imageInput').files[0];
+            const tipoEsperado = document.getElementById('tipoEsperado').value;
+            
+            if (!imageFile) {
+                alert('Por favor selecciona una imagen');
+                return;
+            }
+            
+            formData.append('file', imageFile);
+            if (tipoEsperado) {
+                formData.append('tipo_esperado', tipoEsperado);
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/clasificar`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const resultado = await response.json();
+                
+                // Mostrar resultado actual
+                document.getElementById('resultadoActual').classList.remove('hidden');
+                document.getElementById('tipoEsperadoResultado').textContent = resultado.tipo_esperado;
+                document.getElementById('tipoClasificadoResultado').textContent = resultado.tipo_clasificado;
+                document.getElementById('coincidenciaResultado').textContent = 
+                    resultado.coincidencia ? 'Sí' : 'No';
+                
+                // Recargar historial
+                await cargarHistorial();
+                
+                // Limpiar formulario
+                document.getElementById('uploadForm').reset();
+                
+            } catch (error) {
+                console.error('Error al clasificar imagen:', error);
+                alert('Error al clasificar la imagen');
+            }
+        });
+
+        // Inicializar la página
+        window.addEventListener('load', () => {
+            cargarTipos();
+            cargarHistorial();
+        });
+    </script>
+</body>
+</html>

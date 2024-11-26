@@ -1,0 +1,6 @@
+botas
+no es un calzado
+sandalias
+tacones
+tenis
+zapatos
